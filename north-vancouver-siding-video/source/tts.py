@@ -6,7 +6,7 @@ k = Kokoro("tts/kokoro-v1.0.onnx", "tts/voices-v1.0.bin")
 out = []
 for i, s in enumerate(SCENES):
     text = s.get("say", s["sub"])
-    a, sr = k.create(text, voice="af_heart", speed=0.97, lang="en-us")
+    a, sr = k.create(text, voice="af_heart", speed=1.1, lang="en-us")
     # trim leading/trailing near-silence
     idx = np.where(np.abs(a) > 0.01)[0]
     a = a[max(0, idx[0]-int(.03*sr)): idx[-1]+int(.08*sr)]

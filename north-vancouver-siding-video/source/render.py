@@ -5,9 +5,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from script import SCENES
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+OUT = os.environ.get("OUT", "out2")
 IMGDIR = os.path.join(HERE, "..", "images")
 W, H, FPS = 1920, 1080, 30
-TR = 0.45                       # crossfade between scenes
+TR = 0.3                       # crossfade between scenes
 RED = (228, 30, 36)
 CREAM = (246, 243, 237)
 INK = (28, 28, 30)
@@ -18,9 +19,9 @@ durs = json.load(open(os.path.join(HERE, "tts", "durs.json")))["durs"]
 TL = []
 t = 0.0
 for i, s in enumerate(SCENES):
-    lead = 0.7 if i == 0 else 0.35
-    tail = 4.0 if i == len(SCENES) - 1 else 0.5
-    d = lead + durs[i] + tail
+    lead = 0.4 if i == 0 else 0.15
+    tail = s.get("tail", 0.3)
+    d = max(lead + durs[i] + tail, 2.0 if s["kind"] == "chapter" else 0)
     TL.append(dict(i=i, start=t, dur=d, vs=lead, vd=durs[i], s=s))
     t += d
 TOTAL = t
@@ -103,7 +104,30 @@ KB = {  # per-photo zoom / focal moves
     3: (1.04, 1.16, (0.4, 0.5), (0.55, 0.45)),
     4: (1.0, 1.12, (0.5, 0.55), (0.5, 0.45)),
     5: (1.05, 1.15, (0.55, 0.5), (0.45, 0.45)),
+    6: (1.0, 1.1, (0.5, 0.5), (0.5, 0.42)),
 }
+
+@lru_cache(None)
+def blurred_cover(n):
+    im = photo(n); s = max(W / im.width, H / im.height) / 4
+    im = im.resize((int(im.width * s) + 1, int(im.height * s) + 1), Image.BILINEAR)
+    im = im.crop(((im.width - W // 4) // 2, (im.height - H // 4) // 2, (im.width - W // 4) // 2 + W // 4, (im.height - H // 4) // 2 + H // 4))
+    im = im.filter(ImageFilter.GaussianBlur(6)).resize((W, H), Image.BICUBIC)
+    return Image.blend(im, Image.new("RGB", (W, H), (0, 0, 0)), 0.35)
+
+def photo_frame(n, p):
+    """Full-frame photo with motion; portrait photos sit on a blurred copy of themselves."""
+    img = photo(n); z0, z1, f0, f1 = KB[n]
+    if img.width >= img.height * 1.3:
+        return kenburns(img, p, W, H, z0, z1, f0, f1)
+    fr = blurred_cover(n).copy()
+    pw, ph = 750, 1000
+    fg = kenburns(img, p, pw, ph, z0, z1, f0, f1).convert("RGBA")
+    fg.putalpha(rounded_photo_mask(pw, ph, 22))
+    put(fr, _shadow_cache(pw, ph), W / 2, H / 2 + 8, a=0.9)
+    put(fr, fg, W / 2, H / 2)
+    return fr
+
 
 # ---------------------------------------------------------------- backgrounds
 def _ring(R, th, col):
@@ -226,7 +250,7 @@ def layout_lines(lines, dark, cx, cy, small=72, big=132, align="c", maxw=1640):
 
 def draw_tokens(fr, toks, times, u, ):
     for tk, t0 in zip(toks, times):
-        p = (u - t0) / 0.38
+        p = (u - t0) / 0.28
         if p <= 0: continue
         e = eo(p)
         sp = tk["sp"]
@@ -309,7 +333,7 @@ def draw_card(fr, sc, u, cx, cy):
     card = cp["base"].copy()
     times = [cue_time(sc, c) for _, _, c in s["items"]]
     for k, (it, t0) in enumerate(zip(cp["items"], times)):
-        p = (u - t0) / 0.4
+        p = (u - t0) / 0.28
         if p <= 0: continue
         e = eo(p)
         card.alpha_composite(with_alpha(it, clamp(p * 1.5)), (int(cp["pad"] - 30 * (1 - e)), cp["items_y"] + k * cp["row"]))
@@ -317,17 +341,17 @@ def draw_card(fr, sc, u, cx, cy):
     canv = Image.new("RGBA", (cp["CW"] + 2 * P, cp["CH"] + 2 * P), CARD_COL + (0,))
     canv.alpha_composite(card, (P, P))
     rest = -1.4 if idx % 2 else 1.2
-    ang = rest + 10 * math.exp(-3.2 * u) * math.cos(7 * u) + 0.25 * math.sin(u * 1.3)
+    ang = rest + 9 * math.exp(-4.5 * u) * math.cos(9 * u) + 0.25 * math.sin(u * 1.3)
     pivot = (canv.width / 2, P)
     rc = canv.rotate(ang, resample=Image.BICUBIC, center=pivot)
     rs = cp["shadow"].rotate(ang, resample=Image.BILINEAR, center=pivot)
-    e = eback(u / 0.7, 1.2)
-    a = clamp(u / 0.35)
+    e = eback(u / 0.5, 1.2)
+    a = clamp(u / 0.25)
     top = cy - cp["CH"] / 2 - P - (1 - e) * 90
     left = cx - canv.width / 2
     put(fr, rs, left, top, a=a * 0.9, anchor="tl")
     put(fr, rc, left, top, a=a, anchor="tl")
-    pp = (u - 0.45) / 0.3
+    pp = (u - 0.3) / 0.25
     if pp > 0:
         put(fr, pin_sprite(), cx, top + P + 4, a=clamp(pp * 2), sc=lerp(1.8, 1.0, eo(pp)))
 
@@ -385,32 +409,41 @@ def r_kinetic(sc, u):
     return fr
 
 def r_photo_text(sc, u):
-    s = sc["s"]; z0, z1, f0, f1 = KB[s["img"]]
-    fr = kenburns(photo(s["img"]), clamp(u / sc["dur"], 0, 1.1), W, H, z0, z1, f0, f1)
+    s = sc["s"]
+    fr = photo_frame(s["img"], clamp(u / sc["dur"], 0, 1.1))
     put(fr, dark_overlay(0.58), 0, 0, anchor="tl")
     toks = layout_lines(s["lines"], True, W / 2, H / 2 - 30, small=78, big=150)
     draw_tokens(fr, toks, word_times(sc, [t["w"] for t in toks]), u)
     return fr
 
 def r_card(sc, u):
-    fr = bg_light(u, sc["i"])
-    draw_card(fr, sc, u, W / 2, H / 2 - 10)
+    fr = bg_light(u, sc["i"]); s = sc["s"]
+    if not s.get("img"):
+        draw_card(fr, sc, u, W / 2, H / 2 - 10); return fr
+    cw, ch = 540, 720
+    z0, z1, f0, f1 = KB[s["img"]]
+    ph = kenburns(photo(s["img"]), clamp(u / sc["dur"]), cw, ch, z0, z1, f0, f1).convert("RGBA")
+    ph.putalpha(rounded_photo_mask(cw, ch, 24))
+    e = eo(u / 0.5); x = 1480 + (1 - e) * 260
+    put(fr, _shadow_cache(cw, ch), x, H / 2 + 6, a=clamp(u / 0.3))
+    put(fr, ph, x, H / 2 - 10, a=clamp(u / 0.3))
+    draw_card(fr, sc, u, 650, H / 2 - 10)
     return fr
 
 def r_chapter(sc, u):
     s = sc["s"]; fr = bg_light(u, sc["i"])
     num = text_sprite(s["num"], "InterDisplay-Black", 460, (234, 230, 223))
-    put(fr, num, W / 2, H / 2 - 40, a=clamp(u / 0.5), sc=lerp(1.15, 1.0, eo(u / 1.2)))
+    put(fr, num, W / 2, H / 2 - 40, a=clamp(u / 0.3), sc=lerp(1.15, 1.0, eo(u / 0.8)))
     toks = layout_lines(s["lines"], False, W / 2, H / 2 - 40, small=80, big=140)
     tt = word_times(sc, [t["w"] for t in toks])
-    tt = [min(x, 0.25 + 0.16 * k) if k < 99 else x for k, x in enumerate(tt)]   # chapter titles are not spoken
+    tt = [min(x, 0.1 + 0.12 * k) if k < 99 else x for k, x in enumerate(tt)]   # chapter titles are not spoken
     draw_tokens(fr, toks, tt, u)
     if s.get("grid"):
-        for k, n in enumerate([3, 4, 1, 5, 2]):
-            p = (u - 0.5 - k * 0.12) / 0.6
+        for k, n in enumerate([3, 6, 1, 4, 2, 5]):
+            p = (u - 0.2 - k * 0.08) / 0.45
             if p <= 0: continue
-            th = thumb(n, rot=[-5, 3, -2, 4, -4][k])
-            put(fr, th, 230 + k * 365, 880 + (1 - eback(p)) * 260, a=clamp(p * 2))
+            th = thumb(n, w=270, h=190, rot=[-5, 3, -2, 4, -4, 2][k])
+            put(fr, th, 210 + k * 300, 880 + (1 - eback(p)) * 260, a=clamp(p * 2))
     else:
         if s["num"] == "01":   # North Shore rain
             d = ImageDraw.Draw(fr); rnd = random.Random(5)
@@ -418,7 +451,7 @@ def r_chapter(sc, u):
                 x0 = rnd.uniform(-200, W); sp = rnd.uniform(700, 1000); ph = rnd.uniform(0, H + 200)
                 y = (ph + u * sp) % (H + 200) - 100; x = x0 + y * 0.18
                 d.line((x, y, x + 9, y + 50), fill=(214, 211, 205), width=2)
-        m = mountains(); wv = int(W * eio(u / 1.8))
+        m = mountains(); wv = int(W * eio(u / 1.0))
         if wv > 2: fr.paste(m.crop((0, 0, wv, m.height)), (0, H - m.height + 10), m.crop((0, 0, wv, m.height)))
     return fr
 
@@ -453,11 +486,11 @@ def r_rainscreen(sc, u):
         put(fr, sp, 150 - sp.info["pad"] - (1 - eo(p)) * 40, 510 + j * 64, a=clamp(p), anchor="tl")
     # diagram
     X, Y0, Y1 = 900, 210, 860
-    t_struct = 0.3
-    t_wrb = cue_time(sc, "rainscreen") - 0.3
-    t_gap = cue_time(sc, "small air gap")
+    t_struct = 0.1
+    t_wrb = cue_time(sc, "rainscreen") + 0.2
+    t_gap = cue_time(sc, "drained air gap")
     t_sid = cue_time(sc, "behind the siding")
-    t_water = cue_time(sc, "lets water drain")
+    t_water = cue_time(sc, "water runs")
     d = ImageDraw.Draw(fr)
     def reveal(t0): return clamp((u - t0) / 0.5)
     layers = [  # x0, x1, color, t
@@ -509,7 +542,7 @@ def r_rainscreen(sc, u):
             ImageDraw.Draw(dr).polygon([(11, 0), (4, 14), (18, 14)], fill=(40, 130, 230, 255))
             put(fr, dr, xx, yy, a=pw * clamp((1.0 - q) * 6))
     # labels
-    labels = [("Lap siding", X + 316, 300, t_sid + 0.3), ("Drained air gap", X + 272, 420, t_gap + 0.2),
+    labels = [("Siding", X + 316, 300, t_sid + 0.3), ("Drained air gap", X + 272, 420, t_gap + 0.2),
               ("Weather barrier", X + 247, 540, t_wrb + 0.2), ("Sheathing", X + 226, 660, t_struct + 0.9),
               ("Insulated wall", X + 120, 780, t_struct + 1.2)]
     LX = X + 470
@@ -564,12 +597,11 @@ def r_showcase(sc, u):
     s = sc["s"]; imgs = s["imgs"]; n = len(imgs); D = sc["dur"] + TR
     seg = D / n; k = min(n - 1, int(u / seg))
     def frame_for(j, uu):
-        z0, z1, f0, f1 = KB[imgs[j]]
-        return kenburns(photo(imgs[j]), clamp(uu / (seg + 0.8), 0, 1.2), W, H, z0, z1, f0, f1)
+        return photo_frame(imgs[j], clamp(uu / (seg + 0.5), 0, 1.2))
     fr = frame_for(k, u - k * seg)
-    if k > 0 and u - k * seg < 0.7:
+    if k > 0 and u - k * seg < 0.35:
         prev = frame_for(k - 1, u - (k - 1) * seg)
-        fr = Image.blend(prev, fr, eio((u - k * seg) / 0.7))
+        fr = Image.blend(prev, fr, eio((u - k * seg) / 0.35))
     put(fr, dark_overlay(0.12), 0, 0, anchor="tl")
     lt = lower_third(s["label"], s["detail"])
     p = (u - 0.4) / 0.6
@@ -587,15 +619,17 @@ def r_end(sc, u):
     x = W / 2 - tot / 2; y = H / 2 - 40
     for k, (p, col) in enumerate(parts):
         sp = text_sprite(p, "InterDisplay-ExtraBold", 170, col, glow=(RED if col == RED else None))
-        gw = f.getlength(p); q = (uu - 0.3 - k * 0.22) / 0.45
+        gw = f.getlength(p); q = (uu - 0.2 - k * 0.16) / 0.35
         if q > 0:
             e = eo(q)
             put(fr, sp, x + gw / 2, y + (1 - e) * 30, a=clamp(q * 1.6), sc=lerp(1.2, 1, e), blur=(1 - e) * 10)
         x += gw
     kk = text_sprite("REQUEST A QUOTE", "Inter-Bold", 30, RED, spacing=6)
     put(fr, kk, W / 2, y - 150, a=clamp((uu - 0.1) / 0.5))
-    sub = text_sprite("Siding installation & replacement  ·  North Vancouver", "Inter-Medium", 38, (190, 190, 196))
-    put(fr, sub, W / 2, y + 140, a=clamp((uu - 1.0) / 0.6))
+    sub = text_sprite("Metal siding  ·  Brick & stone  ·  North Vancouver", "Inter-Medium", 38, (190, 190, 196))
+    put(fr, sub, W / 2, y + 140, a=clamp((uu - 0.7) / 0.5))
+    fade = clamp((u - (sc["dur"] - 1.0)) / 1.0)
+    if fade > 0 and not thanks: fr = Image.blend(fr, Image.new("RGB", (W, H), (0, 0, 0)), fade)
     if thanks:
         q = (u - 0.3) / 0.6
         th = text_sprite("Thanks for watching", "InterDisplay-SemiBold", 54, (255, 255, 255))
@@ -608,7 +642,7 @@ R = dict(kinetic=r_kinetic, photo_text=r_photo_text, card=r_card, chapter=r_chap
          rainscreen=r_rainscreen, photo_side=r_photo_side, showcase=r_showcase, end=r_end)
 
 # ---------------------------------------------------------------- subtitles
-def chunks(text, maxc=58):
+def chunks(text, maxc=42):
     words = text.split(); out, cur = [], ""
     for w in words:
         if cur and len(cur) + 1 + len(w) > maxc:
@@ -678,7 +712,6 @@ def render_frame(t):
         put(fr, chap_sprite(sc["s"]["chap"], dark), 60, 46, a=a, anchor="tl")
     if sc["s"]["kind"] != "end":
         sp = wm_sprite(dark); put(fr, sp, W - 60 - sp.width + sp.info["pad"], 46, a=0.85, anchor="tl")
-    draw_sub(fr, t)
     return fr
 
 def srt():
@@ -691,7 +724,7 @@ if __name__ == "__main__":
     mode = sys.argv[1]
     if mode == "still":
         for x in sys.argv[2:]:
-            render_frame(float(x)).save(os.path.join(HERE, "out", f"still_{float(x):06.2f}.jpg"), quality=88)
+            render_frame(float(x)).save(os.path.join(HERE, OUT, f"still_{float(x):06.2f}.jpg"), quality=88)
     elif mode == "chunk":
         a, b, path = int(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
         p = subprocess.Popen(["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(FPS),
@@ -703,5 +736,5 @@ if __name__ == "__main__":
     elif mode == "info":
         print("TOTAL", TOTAL, "frames", int(math.ceil(TOTAL * FPS)))
         for sc in TL: print(f"{sc['start']:7.2f} {sc['dur']:6.2f} {sc['s']['kind']}")
-        open(os.path.join(HERE, "out", "subtitles.srt"), "w").write(srt())
-        json.dump([(sc["start"] + sc["vs"]) for sc in TL], open(os.path.join(HERE, "out", "voice_starts.json"), "w"))
+        open(os.path.join(HERE, OUT, "subtitles.srt"), "w").write(srt())
+        json.dump([(sc["start"] + sc["vs"]) for sc in TL], open(os.path.join(HERE, OUT, "voice_starts.json"), "w"))

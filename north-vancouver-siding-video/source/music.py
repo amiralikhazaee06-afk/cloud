@@ -44,4 +44,4 @@ fade = np.clip(t / 3.0, 0, 1) * np.clip((T - t) / 5.0, 0, 1)
 mix *= fade
 mix /= np.abs(mix).max() * 1.12
 st = np.stack([mix, np.roll(mix, int(0.011 * SR))], 1)
-sf.write("out/music_raw.wav", st, SR)
+sf.write("out2/music_raw.wav", st, SR)
