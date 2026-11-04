@@ -1,0 +1,4 @@
+.cache/
+out/
+media/
+__pycache__/
