@@ -7,7 +7,7 @@ One YouTube video (1920×1080, 16:9) for each blog post on silversiding.ca, plus
 |---|---|---|
 | `01-what-is-a-rainscreen-wall.zip` | /what-is-a-rainscreen-wall/ | 5:15 |
 | `02-metal-vs-vinyl-vs-fibre-cement-wet-climate.zip` | /siding-for-wet-coastal-climate/ | 5:45 |
-| `03-lux-vs-longboard-vs-al13.zip` | /lux-panels-vs-other-metal-siding/ | ≈6:20 |
+| `03-lux-vs-longboard-vs-al13.zip` | /lux-panels-vs-other-metal-siding/ | 6:26 |
 | `04-siding-design-ideas-2026.zip` | /modern-custom-home-siding-trends/ | 5:43 |
 
 Each zip contains:
