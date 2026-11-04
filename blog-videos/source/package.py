@@ -4,6 +4,7 @@ import json, os, shutil, sys, zipfile
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "out")
 PKG = os.path.join(HERE, "..", "packages")
+PKG_SVC = os.path.join(HERE, "..", "..", "service-videos", "packages")   # service-page videos live in their own folder
 
 META = {
     "rainscreen": dict(
@@ -144,7 +145,9 @@ def main(names):
         src = os.path.join(OUT, name)
         mp4 = os.path.join(src, f"{name}.mp4")
         assert os.path.exists(mp4), mp4
-        stage = os.path.join(PKG, m["zipname"])
+        pkg = PKG_SVC if m.get("service") else PKG
+        os.makedirs(pkg, exist_ok=True)
+        stage = os.path.join(pkg, m["zipname"])
         if os.path.exists(stage): shutil.rmtree(stage)
         os.makedirs(stage)
         shutil.copy(mp4, os.path.join(stage, "video.mp4"))
@@ -159,7 +162,7 @@ def main(names):
             m["title"] + "\n\nAlternative titles (A/B test):\n" + "\n".join("- " + x for x in m["alt_titles"]) + "\n")
         open(os.path.join(stage, "caption.txt"), "w").write(caption(name, m))
         open(os.path.join(stage, "tags.txt"), "w").write(", ".join(m["tags"]) + "\n")
-        z = os.path.join(PKG, m["zipname"] + ".zip")
+        z = os.path.join(pkg, m["zipname"] + ".zip")
         with zipfile.ZipFile(z, "w", zipfile.ZIP_DEFLATED) as zf:
             for f in sorted(os.listdir(stage)):
                 ct = zipfile.ZIP_STORED if f.endswith((".mp4", ".jpg")) else zipfile.ZIP_DEFLATED
