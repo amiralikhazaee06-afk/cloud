@@ -96,9 +96,52 @@ def trends():
     return fr
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and len(sys.argv) == 1:
     for name, fn in [("rainscreen", rainscreen), ("wetclimate", wetclimate), ("lux", lux), ("trends", trends)]:
         os.makedirs(os.path.join(OUT, name), exist_ok=True)
         im = fn()
         im.save(os.path.join(OUT, name, "thumbnail.jpg"), quality=90)
         print("thumb", name, os.path.getsize(os.path.join(OUT, name, "thumbnail.jpg")) // 1024, "KB")
+
+
+def service_thumb(spec):
+    """Dark background, real project photo on the right, big words left, red accent, small brand tag."""
+    fr = base(dark=True)
+    if spec.get("diagram"):
+        big = Image.new("RGB", (640, 720), E.CREAM)
+        E.wall_section(big, 120, 40, 640, 1.3, "rain", scale=2.6)
+        card = E.rrect(480, 600, 30, E.PAPER).copy()
+        crop = big.crop((70, 40, 550, 640)).convert("RGBA"); crop.putalpha(E.rmask(480, 600, 30))
+        card.paste(crop, (0, 0), crop)
+        E.put(fr, E.shadow(480, 600, 30, op=0.45), 1010, 380)
+        E.put(fr, card, 1010, 360, rot=-2)
+    else:
+        rounded_photo(fr, spec["photo"], 960, 380, 560, 600, crop=spec.get("crop"), rot=-3)
+    f = E.font("mono", 26)
+    tag = "SILVERSIDING"
+    im = Image.new("RGBA", (int(f.getlength(tag)) + 60, 50), (0, 0, 0, 0))
+    ImageDraw.Draw(im).ellipse((6, 18, 20, 32), fill=E.RED)
+    ImageDraw.Draw(im).text((30, 25), tag, font=f, fill=(200, 196, 188), anchor="lm")
+    E.put(fr, im, 56, 40, anchor="tl")
+    size = min(spec.get("size", 140), 150)
+    while size > 60 and max(E.font(E.F_BIG, size).getlength(l) for l in spec["lines"]) > 570: size -= 4
+    y = words(fr, spec["lines"], 56, 100, [size] * len(spec["lines"]), [E.WHITE] * len(spec["lines"]))
+    acc = spec["accent"]
+    asz = 58 if len(acc) <= 16 else (46 if len(acc) <= 22 else 38)
+    while asz > 30 and E.font(E.F_BIG, asz).getlength(acc if len(acc) <= 22 else acc[:20]) > 600: asz -= 2
+    for ln in ([acc] if len(acc) <= 22 else [acc[:acc.rfind(" ", 0, 20)], acc[acc.rfind(" ", 0, 20) + 1:]]):
+        E.put(fr, E.word_sprite(ln, E.F_BIG, asz, E.RED), 56, y + 6, anchor="tl"); y += int(asz * 1.1)
+    pill(fr, spec["pill"], 60, max(y + 24, 560), 40, (50, 50, 56), rot=-2)
+    return fr
+
+
+def services():
+    import service_meta as M
+    for key, m in M.S.items():
+        d = os.path.join(OUT, key); os.makedirs(d, exist_ok=True)
+        service_thumb(m["thumb"]).save(os.path.join(d, "thumbnail.jpg"), quality=90)
+        print("thumb", key)
+
+
+if __name__ == "__main__" and len(sys.argv) > 1 and sys.argv[1] == "services":
+    services()

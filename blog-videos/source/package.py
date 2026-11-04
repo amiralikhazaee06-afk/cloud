@@ -98,6 +98,24 @@ def chapters(name):
 def caption(name, m):
     ch = "\n".join(f"{mmss(t)} {n}" for t, n in chapters(name))
     b = "\n".join(f"✔ {x}" for x in m["bullets"])
+    if m.get("service"):
+        import service_meta as SM
+        return f"""{m['hook']}
+
+In this video:
+{b}
+
+🔗 Service page (photos, FAQ and free estimate):
+{m['url']}
+
+Chapters:
+{ch}
+
+👷 Who we are: {SM.EEAT}
+{SM.CONTACT}
+
+{m['hashtags']}
+"""
     return f"""{m['hook']}
 
 In this video:
@@ -117,6 +135,9 @@ https://silversiding.ca/contact-us/
 
 
 def main(names):
+    import service_meta as SM
+    for k, v in SM.S.items():
+        META[k] = dict(v, service=True)
     os.makedirs(PKG, exist_ok=True)
     for name in names:
         m = META[name]
@@ -129,7 +150,11 @@ def main(names):
         shutil.copy(mp4, os.path.join(stage, "video.mp4"))
         shutil.copy(os.path.join(src, "thumbnail.jpg"), os.path.join(stage, "thumbnail.jpg"))
         shutil.copy(os.path.join(src, "subtitles.srt"), os.path.join(stage, "subtitles.srt"))
-        shutil.copy(os.path.join(HERE, "briefs", f"{name}.md"), os.path.join(stage, "blog-update.md"))
+        if m.get("service"):
+            shutil.copy(os.path.join(HERE, "briefs", "services", f"{m['num']:02d}-{m['slug']}.md"), os.path.join(stage, "page-update.md"))
+            shutil.copy(os.path.join(HERE, "briefs", "services", "00-sitewide-eeat.md"), os.path.join(stage, "sitewide-eeat.md"))
+        else:
+            shutil.copy(os.path.join(HERE, "briefs", f"{name}.md"), os.path.join(stage, "blog-update.md"))
         open(os.path.join(stage, "title.txt"), "w").write(
             m["title"] + "\n\nAlternative titles (A/B test):\n" + "\n".join("- " + x for x in m["alt_titles"]) + "\n")
         open(os.path.join(stage, "caption.txt"), "w").write(caption(name, m))
@@ -145,4 +170,4 @@ def main(names):
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:] or list(META))
+    main(sys.argv[1:] or [k for k in META])

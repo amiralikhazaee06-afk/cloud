@@ -488,7 +488,9 @@ def r_cards(fr, s, t):
         ImageDraw.Draw(hb).rectangle((0, 70, cw, 120), fill=head)
         put(fr, hb, x, y, a=clamp(p * 1.6), anchor="tl")
         f = font(F_BIG, c.get("hsize", 52))
-        hs = word_sprite(c["head"], F_BIG, c.get("hsize", 52), WHITE)
+        hsz = c.get("hsize", s.get("hsize", 52))
+        while hsz > 26 and font(F_BIG, hsz).getlength(c["head"]) > cw - 64: hsz -= 2
+        hs = word_sprite(c["head"], F_BIG, hsz, WHITE)
         put(fr, hs, x + 36, y + 60 - hs.height / 2, a=clamp(p * 1.6), anchor="tl")
         yy = y + 150
         if c.get("tag"):
@@ -807,7 +809,7 @@ def render_video(scenes, total, chapters, out_path, start=0.0, end=None, fps=FPS
     end = total if end is None else end
     n0, n1 = int(start * fps), int(end * fps)
     cmd = ["ffmpeg", "-v", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24", "-s", f"{W}x{H}", "-r", str(fps),
-           "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", out_path]
+           "-i", "-", "-c:v", "libx264", "-preset", "medium", "-crf", os.environ.get("CRF", "20"), "-pix_fmt", "yuv420p", out_path]
     pr = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     for n in range(n0, n1):
         fr = frame_at(scenes, n / fps, total, chapters)

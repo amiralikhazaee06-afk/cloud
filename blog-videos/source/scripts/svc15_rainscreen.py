@@ -1,0 +1,62 @@
+# Service video 15 — Rain screen system installation (silversiding.ca/services/rainscreen/)
+# GSC: no impressions recorded for this URL in 3 months (indexable, canonical OK — Google is likely choosing the
+# blog post /what-is-a-rainscreen-wall/ instead). Site-wide queries: rain screening vancouver (pos 3.6), rainscreened (pos 6).
+# Autocomplete: rainscreen siding cost, rainscreen vs furring strips, plastic rainscreen furring strips, is rainscreen necessary,
+# rainscreen retrofit, rainscreen contractor.
+# This video is about the SERVICE (installing one); the blog video explains the concept and the code.
+from svc_common import who, credentials, end, INKC, REDC, GREYC, G
+
+SCENES = [
+    dict(kind="kinetic", bg="dark", lines=["Installing a rainscreen:", "*what it takes*"], at=[0, 0.5], sizes=[110, 120], maxw=1700,
+         vo=["Even properly installed siding lets some water through. A rainscreen gives that water a way out.",
+             "This video is about installing one: the types, which siding needs which, how it works with the air barrier, and what a proper job involves."]),
+    who("Who we are", "DD6A9214-1.jpg", label=G, variant=1,
+        service_line="A rainscreen is standard on our new installations and full reclads, for homes, strata and commercial buildings."),
+
+    dict(kind="layers", chapter="How it works", title="A drained, *ventilated* gap",
+         labels=[("siding", "Siding", 0, 120), ("cavity", "Gap: water drains, air moves", 0.6, 330),
+                 ("vent", "Exits at the base", 1, 0), ("wrb", "Air barrier stays dry", 1.5, 520)],
+         vo=["A rainscreen creates a small, continuous gap between the back of the siding and the wall's water-resistive barrier.",
+             "When wind-driven rain gets past the siding, gravity pulls it down that gap and out at the base, instead of letting it soak into the sheathing.",
+             "And the same gap lets air move, so whatever moisture is left dries out faster, in summer as well as winter."]),
+    dict(kind="q", n=1, chapter="Ventilated or drainscreen?", text="Ventilated rainscreen or *drainscreen?*",
+         vo=["Not every rainscreen is built the same way. Ventilated, or drainscreen?"]),
+    dict(kind="cards", chapter="Ventilated or drainscreen?", title="Two ways to *build the gap*",
+         cols=[dict(head="Ventilated", at=0, color=REDC, rows=["Deeper gap: strapping or a thick mat", "Drains and dries actively", "Best for wood and fibre cement"]),
+               dict(head="Drainscreen", at=1, color=INKC, rows=["Thinner drainage layer", "Drains well, little airflow", "Can suit less absorptive cladding"])],
+         ch=540, rsize=38,
+         vo=["A ventilated rainscreen uses a deeper gap, made with strapping or a thicker drainage mat, so water drains and air moves. It's generally the stronger choice for absorptive materials, like wood and fibre cement.",
+             "A non-ventilated system, sometimes called a drainscreen, uses a thinner layer. It drains water well, but allows little airflow, so it dries the wall less actively. The right choice depends on the siding, the wall, and the exposure, not a single default."]),
+    dict(kind="cards", chapter="Which siding needs it?", title="Which siding *benefits most?*",
+         cols=[dict(head="Fibre cement & wood", at=0, color=REDC, rows=["Absorb and release moisture", "A ventilated gap makes a real difference"]),
+               dict(head="Metal", at=1, color=INKC, rows=["Doesn't absorb water", "Condensation behind it still needs a path out"]),
+               dict(head="Vinyl", at=2, color=GREYC, rows=["Vented by its own design", "A gap adds drainage on older walls"])],
+         ch=540, rsize=35,
+         vo=["Fibre cement and wood absorb and release moisture over time, so a ventilated gap behind them makes the biggest difference to how long the wall lasts.",
+             "Metal doesn't absorb water, but condensation can still form on the back of the panels, and a drainage gap gives it somewhere to go.",
+             "Vinyl is vented by its own design, and code treats loose-hung vinyl as its own drainage layer. A gap behind it still adds drainage, especially on older walls being re-clad."]),
+    dict(kind="twowalls", chapter="Rainscreen vs air barrier", at=[0, 1],
+         vo=["Rainscreen and air barrier get confused, but they do different jobs. The Tyvek air barrier wraps the sheathing, and blocks air leakage and water. Without a gap in front of it, water that gets behind tight siding has nowhere to go.",
+             "The rainscreen sits in front of the barrier, so water can reach it, run down it, and drain out. Neither replaces the other. They're one assembly."]),
+
+    dict(kind="bullets", chapter="How we install it", kicker="Our rainscreen process", title="Built on a *sound wall*",
+         icon="num", isize=40, igap=26,
+         items=[dict(t="Assess the sheathing", s="soft spots and existing water damage fixed first", at=0),
+                dict(t="Air barrier, then the drainage layer", s="strapping, battens or a ventilated mat, chosen for the siding", at=1),
+                dict(t="Flashing at every window, door and transition", s="so water in the gap actually exits", at=2),
+                dict(t="Vents and weep points checked clear", s="before the siding goes on", at=3)],
+         vo=["First, we inspect the sheathing for moisture damage and soft spots. A rainscreen only performs on a sound wall.",
+             "Then the air barrier goes on, followed by the drainage layer: strapping, battens or a ventilated mat, depending on the siding and the exposure.",
+             "Flashing at windows, doors and transitions is detailed so water entering the gap actually exits at the base, instead of pooling at an interruption.",
+             "And before any siding goes up, we check that the vents and weep points are clear and working. It's the step that's easy to skip, and expensive to fix later."]),
+    dict(kind="cards", chapter="Code & retrofits", title="Required? *Can it be added?*",
+         cols=[dict(head="BC code", at=0, color=INKC, rows=["Required on many new builds and full reclads", "Partial jobs vary: confirm yours"]),
+               dict(head="Retrofit", at=1, color=REDC, rows=["Added during siding replacement", "Best while the wall is open"]),
+               dict(head="Lifespan", at=2, color=GREYC, rows=["Lasts as long as the wall", "Not a wearing part"])],
+         ch=540, rsize=36,
+         vo=["Is it required? For many new builds and full reclads in BC, yes, a standard that came out of the leaky condo failures. For partial replacements, requirements vary, so confirm the specifics for your project.",
+             "Can it be added to an older house? Yes, and the best time is during a siding replacement, while the wall is already open.",
+             "And a properly built rainscreen is designed to last as long as the wall itself."]),
+    credentials(variant=1),
+    end("silversiding.ca/services/rainscreen", "Not sure what's behind your siding? *We'll check.*"),
+]
